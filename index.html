@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard • CFN Elite Cloud</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#050a14;
+      --panel:#0d1117;
+      --panel-2:rgba(13,17,23,.88);
+      --line:rgba(255,255,255,.08);
+      --accent:#00ff88;
+      --accent-2:#00d977;
+      --text:#e8fff4;
+      --muted:#9fb3aa;
+      --danger:#ff6b6b;
+      --purple:#9f7aea;
+      --orange:#ff9f43;
+      --shadow:0 18px 45px rgba(0,0,0,.35);
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    body{
+      font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace;
+      background:
+        radial-gradient(circle at top left, rgba(0,255,136,.08), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(159,122,234,.08), transparent 28%),
+        linear-gradient(180deg,#040812 0%,#050a14 100%);
+      color:var(--text);
+      line-height:1.55;
+    }
+
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+      background-size:30px 30px;
+      mask-image:radial-gradient(circle at center, black 35%, transparent 100%);
+      z-index:-1;
+    }
+
+    .container{max-width:1450px;margin:0 auto;padding:24px}
+
+    .header,.card,.reset-container{
+      background:var(--panel-2);
+      border:1px solid var(--line);
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(14px);
+    }
+
+    .header{
+      padding:32px 24px;
+      text-align:center;
+      margin-bottom:22px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .header h1{
+      font-size:clamp(2rem,5vw,3.5rem);
+      font-weight:900;
+      margin-bottom:8px;
+      letter-spacing:2px;
+      color:#fff;
+    }
+
+    .header p{
+      color:var(--muted);
+      margin-bottom:16px;
+    }
+
+    .topbar{
+      display:flex;
+      gap:12px;
+      justify-content:center;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .status{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:12px 18px;
+      border-radius:999px;
+      border:1px solid rgba(0,255,136,.24);
+      background:rgba(0,255,136,.08);
+      font-weight:700;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(310px,1fr));
+      gap:22px;
+      margin-bottom:28px;
+    }
+
+    .card{
+      padding:24px;
+      position:relative;
+      overflow:hidden;
+      transition:.25s;
+    }
+
+    .card::before{
+      content:'';
+      position:absolute;
+      inset:0 0 auto 0;
+      height:4px;
+      background:linear-gradient(90deg,var(--accent),var(--purple),var(--orange));
+    }
+
+    .card:hover{
+      transform:translateY(-4px);
+      border-color:rgba(0,255,136,.18);
+    }
+
+    .card h3{
+      font-size:1.08rem;
+      margin-bottom:14px;
+      color:#fff;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    .stat{
+      font-size:clamp(2rem,5vw,3rem);
+      font-weight:900;
+      margin-bottom:10px;
+      color:var(--accent);
+    }
+
+    .btn{
+      background:linear-gradient(135deg,var(--accent),var(--accent-2));
+      border:none;
+      padding:12px 16px;
+      cursor:pointer;
+      font-weight:800;
+      font-family:inherit;
+      font-size:.92rem;
+      border-radius:12px;
+      color:#042315;
+      transition:.18s ease;
+    }
+
+    .btn.secondary{
+      background:#1b2330;
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+
+    .btn.danger{
+      background:linear-gradient(135deg,#ff6b6b,#ff4d4d);
+      color:white;
+    }
+
+    input{
+      width:100%;
+      padding:12px 14px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:rgba(255,255,255,.03);
+      color:var(--text);
+      font:inherit;
+    }
+
+    .inline{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:10px;
+      align-items:center;
+    }
+
+    .progress{
+      height:12px;
+      background:rgba(255,255,255,.06);
+      margin:16px 0 10px;
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.05);
+    }
+
+    .fill{
+      height:100%;
+      width:0%;
+      background:linear-gradient(90deg,var(--accent),var(--purple),var(--orange));
+      border-radius:inherit;
+      transition:width .35s ease;
+    }
+
+    .small-muted{font-size:.9rem;color:var(--muted)}
+    .mini-stat{color:var(--accent);font-weight:800}
+    .skills-matrix{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:8px}
+    .skill-label{font-weight:700;margin-bottom:7px;color:var(--muted);font-size:.92rem}
+    .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:15px}
+    .reset-container{text-align:center;padding:26px}
+
+    .notification{
+      position:fixed;
+      top:18px;
+      right:18px;
+      padding:16px 22px;
+      border-radius:14px;
+      font-weight:800;
+      transform:translateX(420px);
+      transition:transform .35s ease;
+      z-index:1000;
+      backdrop-filter:blur(12px);
+      border:1px solid rgba(0,255,136,.28);
+      background:rgba(0,255,136,.12);
+      color:var(--text);
+      box-shadow:0 16px 40px rgba(0,0,0,.35);
+      max-width:420px;
+    }
+
+    .notification.show{transform:translateX(0)}
+
+    .study-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      gap:14px;
+      margin-bottom:16px;
+    }
+
+    .study-item{
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+    }
+
+    .study-item label{
+      display:block;
+      font-size:.92rem;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+
+    .check-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .check-item{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:rgba(255,255,255,.03);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+    }
+
+    .check-item input{
+      width:auto;
+      margin:0;
+      padding:0;
+    }
+
+    .study-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+
+    .study-preview{
+      margin-top:16px;
+      padding:14px;
+      border-radius:16px;
+      background:rgba(0,0,0,.18);
+      border:1px solid var(--line);
+    }
+
+    .study-preview h4{margin-bottom:10px}
+    .study-preview ul{padding-left:18px}
+    .study-preview li{margin:6px 0}
+
+    @media (max-width:768px){
+      .container{padding:16px}
+      .grid,.skills-matrix,.meta-grid,.study-grid,.check-grid{grid-template-columns:1fr}
+    }
+
+    a.btn {
+      text-decoration: none;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚓ CFN Elite Cloud</h1>
+      <p>Preparação CFN + TAF + Cyber</p>
+      <div class="topbar">
+        <div class="status" id="status">
+          <span id="statusIcon">🟢</span>
+          <span id="statusText">Carregando sessão...</span>
+        </div>
+        <button class="btn secondary" onclick="signOut()">Sair</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>🔥 Disciplina Diária</h3>
+        <div class="stat" id="streak">0</div>
+        <div class="small-muted">Dias consecutivos</div>
+      </div>
+
+      <div class="card">
+        <h3>📚 Horas de Estudo</h3>
+        <div class="stat" id="hours">0</div>
+        <button class="btn" onclick="addHour()">+1h</button>
+      </div>
+
+      <div class="card">
+        <h3>🧮 Matemática CFN</h3>
+        <div class="stat" id="math">0</div>
+        <button class="btn" onclick="addMath()">+1 Exercício</button>
+        <div class="progress"><div class="fill" id="mathBar"></div></div>
+        <small class="small-muted">Meta: 1000</small>
+      </div>
+
+      <div class="card">
+        <h3>📖 Português CFN</h3>
+        <div class="stat" id="port">0</div>
+        <button class="btn" onclick="addPort()">+1 Questão</button>
+        <div class="progress"><div class="fill" id="portBar"></div></div>
+        <small class="small-muted">Meta: 1000</small>
+      </div>
+
+      <div class="card">
+        <h3>🏃 TAF Corrida</h3>
+        <div class="inline">
+          <input type="number" id="run" placeholder="KM" min="0" step="0.1" />
+          <button class="btn" onclick="addRun()">Registrar</button>
+        </div>
+        <div id="runTotal" class="small-muted" style="margin-top:10px"><span class="mini-stat">0.0 km</span></div>
+      </div>
+
+      <div class="card">
+        <h3>💪 Barras TAF</h3>
+        <div class="inline">
+          <input type="number" id="bar" placeholder="Reps" min="0" />
+          <button class="btn" onclick="addBar()">Recorde</button>
+        </div>
+        <div id="barTotal" class="small-muted" style="margin-top:10px"><span class="mini-stat">0 reps</span></div>
+      </div>
+
+      <div class="card">
+        <h3>💪🏻 Abdominais</h3>
+        <div class="inline">
+          <input type="number" id="abdInput" placeholder="Reps" min="0" />
+          <button class="btn" onclick="addAbd()">Recorde</button>
+        </div>
+        <div id="abdTotal" class="small-muted" style="margin-top:10px"><span class="mini-stat">0 reps</span></div>
+      </div>
+
+      <div class="card">
+        <h3>🧠 Cyber Labs</h3>
+        <div class="stat" id="labs">0</div>
+        <button class="btn" onclick="addLab()">+1 Lab</button>
+        <div class="small-muted">Meta: 100</div>
+      </div>
+
+      <div class="card">
+        <h3>🐍 Scripts Python</h3>
+        <div class="stat" id="scripts">0</div>
+        <button class="btn" onclick="addScript()">+1 Script</button>
+      </div>
+
+      <div class="card">
+        <h3>🐧 Linux Mastery</h3>
+        <div class="stat" id="linux">0</div>
+        <button class="btn" onclick="addLinux()">+1 Sessão</button>
+      </div>
+
+      <div class="card">
+        <h3>🌐 Networking</h3>
+        <div class="stat" id="net">0</div>
+        <button class="btn" onclick="addNet()">+1 Lab</button>
+      </div>
+
+      <div class="card">
+        <h3>🎯 Skill Matrix</h3>
+        <div class="skills-matrix">
+          <div>
+            <div class="skill-label">Python</div>
+            <div class="progress"><div class="fill" id="pythonBar"></div></div>
+          </div>
+          <div>
+            <div class="skill-label">Linux</div>
+            <div class="progress"><div class="fill" id="linuxBar"></div></div>
+          </div>
+          <div>
+            <div class="skill-label">Networking</div>
+            <div class="progress"><div class="fill" id="netBar"></div></div>
+          </div>
+          <div>
+            <div class="skill-label">Cyber</div>
+            <div class="progress"><div class="fill" id="cyberBar"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📊 Simulados CFN</h3>
+        <div class="stat" id="simulados">0</div>
+        <button class="btn" onclick="addSimulado()">+1 Simulado</button>
+        <div class="progress"><div class="fill" id="simBar"></div></div>
+        <small class="small-muted">Meta: 50</small>
+      </div>
+
+      <div class="card">
+        <h3>🏋️ TAF Completo</h3>
+        <div class="meta-grid">
+          <div>
+            <div>Flexões: <span id="flex" class="mini-stat">0</span></div>
+            <div>Abdominais: <span id="abd" class="mini-stat">0</span></div>
+          </div>
+          <div>
+            <div>Natação: <span id="nata" class="mini-stat">0m</span></div>
+            <div>PMB: <span id="pmb" class="mini-stat">0</span></div>
+          </div>
+        </div>
+        <button class="btn" onclick="addTAF()">+ Treino TAF</button>
+      </div>
+    </div>
+
+      <div class="card">
+        <h3>📎 Plano de Estudos</h3>
+
+      <div class="small-muted" style="margin-bottom:12px;">
+        Abrir ou baixar o arquivo do plano de estudos
+      </div>
+
+      <a href="./Plano-de-Estudos-CFN.txt" target="_blank" class="btn" style="display:inline-block;text-decoration:none;">
+        Abrir Plano de Estudos
+      </a>
+
+      <a href="./Plano-de-Estudos-CFN.txt" download class="btn secondary" style="display:inline-block;text-decoration:none;margin-left:10px;">
+        Baixar Arquivo
+      </a>
+    </div>
+
+    <div class="reset-container">
+      <h3 style="margin-bottom:16px;">⚠️ Controle de Missão</h3>
+      <button class="btn danger" onclick="resetAll()">🔄 Resetar Missão Completa</button>
+      <div style="margin-top:12px;" class="small-muted">* Os dados são salvos na nuvem na sua conta</div>
+    </div>
+  </div>
+
+  <div id="notification" class="notification"></div>
+
+<script>
+const SUPABASE_URL = 'https://yrkuepenrbviefbxucip.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7-4px_hkJNDU0VUHCds03w_6sbwm-r7';
+
+let sb = null;
+let currentUser = null;
+
+let dataState = {
+  user_id:null,
+  math:0,
+  port:0,
+  hours:0,
+  streak:0,
+  labs:0,
+  scripts:0,
+  linux:0,
+  net:0,
+  run:0,
+  bar:0,
+  simulados:0,
+  flex:0,
+  abd:0,
+  nata:0,
+  pmb:0,
+  last_date:null,
+  version:'cloud-1.1'
+};
+
+const elements = {
+  math: document.getElementById('math'),
+  port: document.getElementById('port'),
+  hours: document.getElementById('hours'),
+  streak: document.getElementById('streak'),
+  labs: document.getElementById('labs'),
+  scripts: document.getElementById('scripts'),
+  linux: document.getElementById('linux'),
+  net: document.getElementById('net'),
+  runTotal: document.getElementById('runTotal'),
+  barTotal: document.getElementById('barTotal'),
+  abdTotal: document.getElementById('abdTotal'),
+  simulados: document.getElementById('simulados'),
+  mathBar: document.getElementById('mathBar'),
+  portBar: document.getElementById('portBar'),
+  pythonBar: document.getElementById('pythonBar'),
+  linuxBar: document.getElementById('linuxBar'),
+  netBar: document.getElementById('netBar'),
+  cyberBar: document.getElementById('cyberBar'),
+  simBar: document.getElementById('simBar'),
+  flex: document.getElementById('flex'),
+  abd: document.getElementById('abd'),
+  nata: document.getElementById('nata'),
+  pmb: document.getElementById('pmb'),
+  statusText: document.getElementById('statusText'),
+  statusIcon: document.getElementById('statusIcon'),
+  notification: document.getElementById('notification'),
+  studyMath: document.getElementById('studyMath'),
+  studyPort: document.getElementById('studyPort'),
+  studyCyber: document.getElementById('studyCyber'),
+  studyTaf: document.getElementById('studyTaf'),
+  doneMath: document.getElementById('doneMath'),
+  donePort: document.getElementById('donePort'),
+  doneCyber: document.getElementById('doneCyber'),
+  doneTaf: document.getElementById('doneTaf'),
+  studyPreviewList: document.getElementById('studyPreviewList')
+};
+
+function loginUrl() {
+  return new URL('./login.html', window.location.href).toString();
+}
+
+function clampPercent(v){ return Math.max(0, Math.min(v, 100)); }
+function todayString(){ return new Date().toDateString(); }
+function yesterdayString(){
+  const d = new Date();
+  d.setDate(d.getDate()-1);
+  return d.toDateString();
+}
+
+function showNotification(message) {
+  const notif = elements.notification;
+  notif.textContent = message;
+  notif.classList.add('show');
+  clearTimeout(showNotification._timer);
+  showNotification._timer = setTimeout(() => notif.classList.remove('show'), 2600);
+}
+
+function updateStatus() {
+  const total = dataState.math + dataState.port + dataState.hours + dataState.labs + dataState.scripts + dataState.linux + dataState.net;
+  let status = 'Em operação';
+  let icon = '🟢';
+
+  if (total === 0) {
+    status = 'Conta pronta — comece sua missão';
+    icon = '⚔️';
+  } else if (dataState.streak >= 14) {
+    status = 'ELITE OPERATOR';
+    icon = '⭐';
+  } else if (dataState.streak >= 7) {
+    status = 'Disciplina forte';
+    icon = '🔥';
+  } else if (total >= 100) {
+    status = 'Progresso sólido';
+    icon = '📈';
+  }
+
+  elements.statusIcon.textContent = icon;
+  elements.statusText.textContent = `${status} • ${currentUser.email}`;
+}
+
+function updateDisplay() {
+  elements.math.textContent = Number(dataState.math).toLocaleString();
+  elements.port.textContent = Number(dataState.port).toLocaleString();
+  elements.hours.textContent = dataState.hours;
+  elements.streak.textContent = dataState.streak;
+  elements.labs.textContent = dataState.labs;
+  elements.scripts.textContent = dataState.scripts;
+  elements.linux.textContent = dataState.linux;
+  elements.net.textContent = dataState.net;
+  elements.runTotal.innerHTML = `<span class="mini-stat">${Number(dataState.run).toFixed(1)} km</span>`;
+  elements.barTotal.innerHTML = `<span class="mini-stat">${dataState.bar} reps</span>`;
+  elements.abdTotal.innerHTML = `<span class="mini-stat">${dataState.abd} reps</span>`;
+  elements.simulados.textContent = dataState.simulados;
+
+  elements.mathBar.style.width = clampPercent((dataState.math / 1000) * 100) + '%';
+  elements.portBar.style.width = clampPercent((dataState.port / 1000) * 100) + '%';
+  elements.pythonBar.style.width = clampPercent(dataState.scripts) + '%';
+  elements.linuxBar.style.width = clampPercent(dataState.linux) + '%';
+  elements.netBar.style.width = clampPercent(dataState.net) + '%';
+  elements.cyberBar.style.width = clampPercent((dataState.labs / 100) * 100) + '%';
+  elements.simBar.style.width = clampPercent((dataState.simulados / 50) * 100) + '%';
+
+  elements.flex.textContent = dataState.flex;
+  elements.abd.textContent = dataState.abd;
+  elements.nata.textContent = `${dataState.nata}m`;
+  elements.pmb.textContent = dataState.pmb;
+}
+
+function updateStreakLocal() {
+  const today = todayString();
+  if (dataState.last_date === today) return;
+  dataState.streak = (dataState.last_date === yesterdayString()) ? dataState.streak + 1 : 1;
+  dataState.last_date = today;
+}
+
+function getStudyPlanStorageKey() {
+  return currentUser ? `study_plan_${currentUser.id}` : 'study_plan_guest';
+}
+
+function renderStudyPlan() {
+  const items = [];
+
+  const math = elements.studyMath.value.trim();
+  const port = elements.studyPort.value.trim();
+  const cyber = elements.studyCyber.value.trim();
+  const taf = elements.studyTaf.value.trim();
+
+  if (math) items.push(`🧮 Matemática: ${math}${elements.doneMath.checked ? ' ✅' : ''}`);
+  if (port) items.push(`📖 Português: ${port}${elements.donePort.checked ? ' ✅' : ''}`);
+  if (cyber) items.push(`🧠 Cyber: ${cyber}${elements.doneCyber.checked ? ' ✅' : ''}`);
+  if (taf) items.push(`🏃 TAF: ${taf}${elements.doneTaf.checked ? ' ✅' : ''}`);
+
+  if (!items.length) {
+    elements.studyPreviewList.innerHTML = '<li>Nenhum plano salvo ainda.</li>';
+    return;
+  }
+
+  elements.studyPreviewList.innerHTML = items.map(item => `<li>${item}</li>`).join('');
+}
+
+function loadStudyPlan() {
+  const raw = localStorage.getItem(getStudyPlanStorageKey());
+
+  if (!raw) {
+    elements.studyMath.value = '';
+    elements.studyPort.value = '';
+    elements.studyCyber.value = '';
+    elements.studyTaf.value = '';
+    elements.doneMath.checked = false;
+    elements.donePort.checked = false;
+    elements.doneCyber.checked = false;
+    elements.doneTaf.checked = false;
+    renderStudyPlan();
+    return;
+  }
+
+  try {
+    const plan = JSON.parse(raw);
+    elements.studyMath.value = plan.math || '';
+    elements.studyPort.value = plan.port || '';
+    elements.studyCyber.value = plan.cyber || '';
+    elements.studyTaf.value = plan.taf || '';
+    elements.doneMath.checked = !!plan.doneMath;
+    elements.donePort.checked = !!plan.donePort;
+    elements.doneCyber.checked = !!plan.doneCyber;
+    elements.doneTaf.checked = !!plan.doneTaf;
+  } catch (e) {
+    console.error('Erro ao carregar plano de estudos', e);
+  }
+
+  renderStudyPlan();
+}
+
+function saveStudyPlan() {
+  const plan = {
+    math: elements.studyMath.value.trim(),
+    port: elements.studyPort.value.trim(),
+    cyber: elements.studyCyber.value.trim(),
+    taf: elements.studyTaf.value.trim(),
+    doneMath: elements.doneMath.checked,
+    donePort: elements.donePort.checked,
+    doneCyber: elements.doneCyber.checked,
+    doneTaf: elements.doneTaf.checked
+  };
+
+  localStorage.setItem(getStudyPlanStorageKey(), JSON.stringify(plan));
+  renderStudyPlan();
+  showNotification('📚 Plano de estudos salvo!');
+}
+
+function clearStudyPlan() {
+  localStorage.removeItem(getStudyPlanStorageKey());
+  elements.studyMath.value = '';
+  elements.studyPort.value = '';
+  elements.studyCyber.value = '';
+  elements.studyTaf.value = '';
+  elements.doneMath.checked = false;
+  elements.donePort.checked = false;
+  elements.doneCyber.checked = false;
+  elements.doneTaf.checked = false;
+  renderStudyPlan();
+  showNotification('🧹 Plano de estudos limpo!');
+}
+
+async function ensureTrackerRow() {
+  const { data, error } = await sb.from('tracker_data').select('*').eq('user_id', currentUser.id).maybeSingle();
+
+  if (error) {
+    console.error(error);
+    showNotification('Erro ao verificar seu perfil no banco.');
+    return false;
+  }
+
+  if (!data) {
+    const initial = {
+      user_id:currentUser.id,
+      math:0,
+      port:0,
+      hours:0,
+      streak:0,
+      labs:0,
+      scripts:0,
+      linux:0,
+      net:0,
+      run:0,
+      bar:0,
+      simulados:0,
+      flex:0,
+      abd:0,
+      nata:0,
+      pmb:0,
+      last_date:null,
+      version:'cloud-1.1'
+    };
+
+    const { error: insertError } = await sb.from('tracker_data').insert(initial);
+    if (insertError) {
+      console.error(insertError);
+      showNotification('Erro ao criar seu registro inicial.');
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function loadUserData() {
+  const { data, error } = await sb.from('tracker_data').select('*').eq('user_id', currentUser.id).single();
+
+  if (error) {
+    console.error(error);
+    showNotification('Erro ao carregar seus dados.');
+    return false;
+  }
+
+  dataState = {
+    user_id:data.user_id,
+    math:data.math ?? 0,
+    port:data.port ?? 0,
+    hours:data.hours ?? 0,
+    streak:data.streak ?? 0,
+    labs:data.labs ?? 0,
+    scripts:data.scripts ?? 0,
+    linux:data.linux ?? 0,
+    net:data.net ?? 0,
+    run:Number(data.run ?? 0),
+    bar:data.bar ?? 0,
+    simulados:data.simulados ?? 0,
+    flex:data.flex ?? 0,
+    abd:data.abd ?? 0,
+    nata:data.nata ?? 0,
+    pmb:data.pmb ?? 0,
+    last_date:data.last_date ?? null,
+    version:data.version ?? 'cloud-1.1'
+  };
+
+  if (dataState.last_date && dataState.last_date !== todayString() && dataState.last_date !== yesterdayString()) {
+    dataState.streak = 0;
+  }
+
+  updateDisplay();
+  updateStatus();
+  return true;
+}
+
+async function saveUserData() {
+  const payload = {
+    math:dataState.math,
+    port:dataState.port,
+    hours:dataState.hours,
+    streak:dataState.streak,
+    labs:dataState.labs,
+    scripts:dataState.scripts,
+    linux:dataState.linux,
+    net:dataState.net,
+    run:dataState.run,
+    bar:dataState.bar,
+    simulados:dataState.simulados,
+    flex:dataState.flex,
+    abd:dataState.abd,
+    nata:dataState.nata,
+    pmb:dataState.pmb,
+    last_date:dataState.last_date,
+    version:'cloud-1.1',
+    updated_at:new Date().toISOString()
+  };
+
+  const { error } = await sb.from('tracker_data').update(payload).eq('user_id', currentUser.id);
+
+  if (error) {
+    console.error(error);
+    showNotification('Erro ao salvar no banco.');
+    return false;
+  }
+
+  updateDisplay();
+  updateStatus();
+  return true;
+}
+
+async function handleIncrement(field, amount=1) {
+  dataState[field] += amount;
+  updateStreakLocal();
+  await saveUserData();
+}
+
+async function addMath(){ await handleIncrement('math', 1); }
+async function addPort(){ await handleIncrement('port', 1); }
+async function addHour(){ await handleIncrement('hours', 1); }
+async function addLab(){ await handleIncrement('labs', 1); }
+async function addScript(){ await handleIncrement('scripts', 1); }
+async function addLinux(){ await handleIncrement('linux', 1); }
+async function addNet(){ await handleIncrement('net', 1); }
+async function addSimulado(){ await handleIncrement('simulados', 1); }
+
+async function addRun() {
+  const input = document.getElementById('run');
+  const km = parseFloat(input.value);
+  if (isNaN(km) || km <= 0) return;
+
+  dataState.run += km;
+  updateStreakLocal();
+  input.value = '';
+  await saveUserData();
+  showNotification(`🏃 ${km.toFixed(1)} km registrado!`);
+}
+
+async function addBar() {
+  const input = document.getElementById('bar');
+  const reps = parseInt(input.value, 10);
+  if (isNaN(reps) || reps < 0) return;
+
+  if (reps > dataState.bar) {
+    dataState.bar = reps;
+    showNotification(`💪 Novo recorde: ${reps} barras!`);
+  } else {
+    showNotification('ℹ️ Valor registrado, mas não superou o recorde atual.');
+  }
+
+  updateStreakLocal();
+  input.value = '';
+  await saveUserData();
+}
+
+async function addAbd() {
+  const input = document.getElementById('abdInput');
+  const reps = parseInt(input.value, 10);
+  if (isNaN(reps) || reps < 0) return;
+
+  if (reps > dataState.abd) {
+    dataState.abd = reps;
+    showNotification(`🔥 Novo recorde: ${reps} abdominais!`);
+  } else {
+    showNotification('ℹ️ Valor registrado, mas não superou o recorde atual.');
+  }
+
+  updateStreakLocal();
+  input.value = '';
+  await saveUserData();
+}
+
+async function addTAF() {
+  dataState.flex += 10;
+  dataState.abd += 20;
+  dataState.nata += 50;
+  dataState.pmb += 1;
+  updateStreakLocal();
+  await saveUserData();
+  showNotification('🏋️ Treino TAF completo!');
+}
+
+async function resetAll() {
+  const ok = confirm('⚠️ Isso vai resetar todos os seus dados de treinamento. Tem certeza?');
+  if (!ok) return;
+
+  dataState = {
+    user_id:currentUser.id,
+    math:0,
+    port:0,
+    hours:0,
+    streak:0,
+    labs:0,
+    scripts:0,
+    linux:0,
+    net:0,
+    run:0,
+    bar:0,
+    simulados:0,
+    flex:0,
+    abd:0,
+    nata:0,
+    pmb:0,
+    last_date:null,
+    version:'cloud-1.1'
+  };
+
+  await saveUserData();
+  showNotification('🔄 Missão resetada com sucesso!');
+}
+
+async function signOut() {
+  await sb.auth.signOut();
+  window.location.href = loginUrl();
+}
+
+function initSupabase() {
+  if (!window.supabase || !window.supabase.createClient) {
+    showNotification('Biblioteca do Supabase não carregou.');
+    return false;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return true;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    if (document.activeElement.id === 'run') addRun();
+    if (document.activeElement.id === 'bar') addBar();
+    if (document.activeElement.id === 'abdInput') addAbd();
+  }
+});
+
+['studyMath','studyPort','studyCyber','studyTaf','doneMath','donePort','doneCyber','doneTaf'].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('input', renderStudyPlan);
+    el.addEventListener('change', renderStudyPlan);
+  }
+});
+
+async function init() {
+  if (!initSupabase()) return;
+
+  const { data } = await sb.auth.getSession();
+  currentUser = data.session?.user ?? null;
+
+  if (!currentUser) {
+    window.location.href = loginUrl();
+    return;
+  }
+
+  const rowOk = await ensureTrackerRow();
+  if (rowOk) await loadUserData();
+  loadStudyPlan();
+  updateStatus();
+
+  sb.auth.onAuthStateChange(async (_event, session) => {
+    currentUser = session?.user ?? null;
+    if (!currentUser) {
+      window.location.href = loginUrl();
+      return;
+    }
+    const ok = await ensureTrackerRow();
+    if (ok) await loadUserData();
+    loadStudyPlan();
+  });
+}
+
+window.signOut = signOut;
+window.addMath = addMath;
+window.addPort = addPort;
+window.addHour = addHour;
+window.addLab = addLab;
+window.addScript = addScript;
+window.addLinux = addLinux;
+window.addNet = addNet;
+window.addSimulado = addSimulado;
+window.addRun = addRun;
+window.addBar = addBar;
+window.addAbd = addAbd;
+window.addTAF = addTAF;
+window.resetAll = resetAll;
+window.saveStudyPlan = saveStudyPlan;
+window.clearStudyPlan = clearStudyPlan;
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
