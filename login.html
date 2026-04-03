@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login • CFN Elite Cloud</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --bg:#050a14; --panel:rgba(13,17,23,.92); --line:rgba(255,255,255,.08);
+      --accent:#00ff88; --accent-2:#00d977; --text:#e8fff4; --muted:#9fb3aa;
+      --shadow:0 18px 45px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      min-height:100vh; display:grid; place-items:center; padding:24px;
+      font-family:'JetBrains Mono','Fira Code','Cascadia Code',monospace;
+      background:
+        radial-gradient(circle at top left, rgba(0,255,136,.08), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(159,122,234,.08), transparent 28%),
+        linear-gradient(180deg,#040812 0%,#050a14 100%);
+      color:var(--text);
+    }
+    .card{
+      width:min(100%, 460px); background:var(--panel); border:1px solid var(--line);
+      border-radius:24px; padding:28px; box-shadow:var(--shadow); backdrop-filter:blur(14px);
+    }
+    h1{font-size:2rem; margin-bottom:8px}
+    p{color:var(--muted); margin-bottom:18px}
+    .stack{display:grid; gap:12px}
+    input{
+      width:100%; padding:13px 14px; border-radius:12px; border:1px solid var(--line);
+      background:rgba(255,255,255,.03); color:var(--text); font:inherit;
+    }
+    input:focus{outline:none; border-color:rgba(0,255,136,.35); box-shadow:0 0 0 4px rgba(0,255,136,.08)}
+    .actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:8px}
+    button{
+      border:none; border-radius:12px; padding:12px 16px; cursor:pointer; font:inherit; font-weight:800;
+    }
+    .primary{background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#042315}
+    .secondary{background:#1b2330; color:var(--text); border:1px solid var(--line)}
+    .notice{
+      margin-top:14px; min-height:24px; color:var(--muted); white-space:pre-wrap;
+    }
+    .ok{color:#86efac}.bad{color:#fca5a5}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>⚓ CFN Elite Cloud</h1>
+    <p>Faça login para entrar no painel. O dashboard só aparece com sessão válida.</p>
+
+    <div class="stack">
+      <input id="email" type="email" placeholder="Seu email" autocomplete="email" />
+      <input id="password" type="password" placeholder="Sua senha" autocomplete="current-password" />
+    </div>
+
+    <div class="actions">
+      <button class="primary" onclick="signIn()">Entrar</button>
+      <button class="secondary" onclick="signUp()">Criar conta</button>
+    </div>
+
+    <div id="notice" class="notice"></div>
+  </div>
+
+<script>
+const SUPABASE_URL = 'https://yrkuepenrbviefbxucip.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_7-4px_hkJNDU0VUHCds03w_6sbwm-r7';
+
+let sb = null;
+const notice = document.getElementById('notice');
+
+function setNotice(text, cls='') {
+  notice.className = 'notice ' + cls;
+  notice.textContent = text;
+}
+
+function dashboardUrl() {
+  return new URL('./dashboard.html', window.location.href).toString();
+}
+
+function initSupabase() {
+  if (!window.supabase || !window.supabase.createClient) {
+    setNotice('Biblioteca do Supabase não carregou.', 'bad');
+    return false;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  return true;
+}
+
+async function signUp() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
+  if (!email || !password) return setNotice('Preencha email e senha.', 'bad');
+
+  const { error } = await sb.auth.signUp({ email, password });
+  if (error) return setNotice(error.message, 'bad');
+  setNotice('Conta criada com sucesso. Agora entre com a mesma conta.', 'ok');
+}
+
+async function signIn() {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
+  if (!email || !password) return setNotice('Preencha email e senha.', 'bad');
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) return setNotice(error.message, 'bad');
+
+  setNotice('Login realizado. Redirecionando...', 'ok');
+  window.location.href = dashboardUrl();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') signIn();
+});
+
+window.addEventListener('load', async () => {
+  if (!initSupabase()) return;
+  const { data } = await sb.auth.getSession();
+  if (data.session?.user) {
+    window.location.href = dashboardUrl();
+  }
+});
+
+window.signIn = signIn;
+window.signUp = signUp;
+</script>
+</body>
+</html>
